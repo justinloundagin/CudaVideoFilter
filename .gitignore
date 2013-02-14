@@ -1,0 +1,11 @@
+cudafilter
+*.o
+*.cpp~
+*.cu~
+*.hpp~
+*.mp4
+*.avi
+*.wav
+*.mov
+*.swp
+*.vim
