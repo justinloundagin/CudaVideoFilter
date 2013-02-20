@@ -7,20 +7,16 @@
 
 #define WINDOW_TITLE "Cuda Video Filter"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
    cvNamedWindow(WINDOW_TITLE, CV_WINDOW_AUTOSIZE);
    CvCapture* capture = cvCaptureFromCAM(0);
    IplImage* frame;
-   for(;;) {
-      frame = cvQueryFrame(capture);
-      if(!frame) 
+
+   while(cvWaitKey(10) != 27) {
+      if(!(frame = cvQueryFrame(capture)))
          break;
       cudaFilter(frame);
       cvShowImage(WINDOW_TITLE, frame);
-      char c = cvWaitKey(10);
-      if(c == 27) 
-         break;
    }
    cvReleaseCapture(&capture);
    cvDestroyWindow(WINDOW_TITLE);
