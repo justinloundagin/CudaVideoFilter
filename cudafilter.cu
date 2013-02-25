@@ -1,8 +1,11 @@
 #include "cudafilter.hpp"
 #include <stdlib.h>
+#include <string.h>
 #include <cuda.h>
 #include <cmath>
+#include <ctype.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define THREAD_DIM 32
 #define CUDA_ERR_HANDLER(err) cudaErrorHandler(err, __FILE__, __LINE__)
@@ -11,16 +14,54 @@
 #define GREEN 1
 #define RED 2
 
-void createFilter(Filter *filter, int rows, int cols, double val) {
+int createFilter(Filter *filter, int rows, int cols, double factor, double bias, double val) {
    filter->data = (double*)malloc(rows * cols * sizeof(double));
    filter->rows = rows;
    filter->cols = cols;
+   filter->factor = factor;
+   filter->bias = bias;
    for(int i=0; i<rows; i++) {
       for(int j=0; j<cols; j++) {
          filterElement(filter, i, j) = val;
       }
    }
+   return filter->data != NULL;
 }
+
+int createFilterFromData(Filter *filter, double factor, double bias, char *buff, int bytes) {
+   char *tmp = NULL;
+   double *data;
+   int rows = 0, cols = 0;
+
+   for(int ndx = 0; ndx < bytes; ndx++ ) {
+      if(!rows && buff[ndx] == '.')
+         cols++;
+      if(buff[ndx] == '\n')
+         rows++;
+   }
+
+   createFilter(filter, rows, cols, factor, bias, 0.0);
+   printf("rows = %d, cols = %d\n", filter->rows, filter->cols);
+   data = filter->data;
+   for(rows = 0; bytes && rows < filter->rows; rows++) {
+      for(cols = 0; bytes && cols < filter->cols; cols++) {
+         *data++ = strtod(tmp = buff, &buff);
+         bytes -= buff - tmp;
+         while(bytes && isspace(*buff)) {
+            buff++;
+            bytes--;
+         }
+      }
+   }
+
+   return filter->data != NULL && rows == filter->rows && cols == filter->cols;
+}
+
+void freeFilter(Filter *filter) {
+   assert(filter->data);
+   free(filter->data);
+}
+
 
 void cudaErrorHandler(cudaError_t err, const char *file, int line) {
    if(err != cudaSuccess) {
@@ -51,9 +92,9 @@ __device__ void convolutionFilter(IplImage *image, IplImage *result, Filter *fil
    }
 
    //truncate values smaller than zero and larger than 255 
-   imageElement(result, x, y, BLUE) = min(max(int(factor * blue + bias), 0), 255); 
-   imageElement(result, x, y, GREEN) = min(max(int(factor * green + bias), 0), 255); 
-   imageElement(result, x, y, RED) = min(max(int(factor * red + bias), 0), 255);
+   imageElement(result, x, y, BLUE) = min(max(int(filter->factor * blue + filter->bias), 0), 255); 
+   imageElement(result, x, y, GREEN) = min(max(int(filter->factor * green + filter->bias), 0), 255); 
+   imageElement(result, x, y, RED) = min(max(int(filter->factor * red + filter->bias), 0), 255);
 }
 
 __device__ void grayFilter(IplImage *image, int row, int col) {

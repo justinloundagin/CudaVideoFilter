@@ -12,6 +12,8 @@
 #include <cv.h>
 
 struct Filter {
+   double factor;
+   double bias;
    double *data;
    int rows; 
    int cols;
@@ -25,7 +27,9 @@ inline HOST DEVICE uchar &imageElement(IplImage *image, int row, int col, int nd
    return CV_IMAGE_ELEM(image, uchar, row, col * image->nChannels + ndx);
 }
 
-void createFilter(Filter *filter, int rows, int cols, double val = 0.0);
+int createFilter(Filter *filter, int rows, int cols, double factor, double bias, double val = 0.0);
+int createFilterFromData(Filter *filter, double factor, double bias, char *buff, int bytes);
+void freeFilter(Filter *filter);
 void cudaFilter(IplImage *image, Filter *filter);
 
 #endif
