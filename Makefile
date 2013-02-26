@@ -1,13 +1,10 @@
-CC = g++
-NVCC = nvcc
+CC = nvcc
 CFLAGS = `pkg-config opencv --cflags --libs`
 NVFLAGS= -arch=sm_30
+SRC = src/filter.cpp src/cudafilter.cu src/main.cpp
 
-all:
-	make cudafilter
-
-cudafilter: cudafilter.cu main.cpp
-	$(NVCC)  cudafilter.cu main.cpp -o $@ $(NVFLAGS) $(CFLAGS)
+cudafilter: $(SRC)
+	$(CC)  $^ -o $@ $(NVFLAGS) $(CFLAGS)
 
 clean:
 	rm -rf *.o cudafilter
