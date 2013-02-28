@@ -1,6 +1,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv.h>
 #include <cstdlib>
+#include <stdarg.h>
 #include <sys/time.h>
 #include "cudafilter.hpp"
 
@@ -14,15 +15,38 @@ double difftimeval(const timeval *start, const timeval *end) {
    return ms < 0.0 ? 0.0 : ms;
 }
 
-IplImage *stitchImages(IplImage *images[], int size) {
-   IplImage *image = cvCreateImage(cvSize(images[0]->width, size * images[0]->height), images[0]->depth, images[0]->nChannels);
-   char *data = image->imageData;
 
-   for(int i=0; i<size; i++) {
-      memcpy(data, images[i]->imageData, images[i]->imageSize);
-      data += images[i]->imageSize;
-   }
-   return image;
+IplImage *stitchImages(IplImage *images[], int numImages) {
+    int w = ceil(numImages / 2.0);
+    int h = 2.0;
+    int size = 300;
+
+    // Create a new 3 channel image
+    IplImage *stitched = cvCreateImage( cvSize(100 + size*w, 60 + size*h), 8, 3 );
+
+    // Loop for nArgs number of arguments
+    for (int i = 0, m = 20, n = 20; i < numImages; i++, m += (20 + size)) {
+        IplImage *img = images[i];
+        if(img == 0) {
+            cvReleaseImage(&stitched);
+            break;
+        }
+        // Find whether height or width is greater in order to resize the image
+        int max = (img->width > img->height)? img->width: img->height;
+
+        // Find the scaling factor to resize the image
+        float scale = (float) ( (float) max / size );
+
+        // Used to Align the images
+        if( i % w == 0 && m!= 20) {
+            m = 20;
+            n += 20 + size;
+        }
+        cvSetImageROI(stitched, cvRect(m, n, (int)( img->width/scale ), (int)( img->height/scale )));
+        cvResize(img, stitched);
+        cvResetImageROI(stitched);
+    }
+    return stitched;
 }
 
 char *computeFps(const char *fmt) {
@@ -78,10 +102,15 @@ int main(int argc, char **argv) {
       for(int i=0; i<argc - 1; i++)
          cudaFilter(frames[i] = cvCloneImage(origin), filters[i]);
 
+      /*
       IplImage *result = stitchImages(frames, argc - 1);
       cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
       cvShowImage(WINDOW_TITLE, result);
-     // cvReleaseImage(&result);
+      */
+      IplImage *result = stitchImages(frames, argc - 1); 
+      cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
+      cvShowImage(WINDOW_TITLE, result);
+       cvReleaseImage(&result);
    }
 
    cvReleaseCapture(&capture);
