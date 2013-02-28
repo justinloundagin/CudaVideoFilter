@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
       IplImage *result = stitchImages(frames, argc - 1);
       cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
       cvShowImage(WINDOW_TITLE, result);
-      cvReleaseImage(&result);
+     // cvReleaseImage(&result);
    }
 
    cvReleaseCapture(&capture);

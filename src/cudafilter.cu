@@ -47,6 +47,7 @@ __device__ void convolutionFilter(IplImage *image, IplImage *result, Filter *fil
 
    //truncate values smaller than zero and larger than 255 
    imageElement(result, x, y, BLUE) = min(max(int(filter->factor * blue + filter->bias), 0), 255); 
+   imageElement(result, x, y, GREEN) = min(max(int(filter->factor * green + filter->bias), 0), 255); 
    imageElement(result, x, y, RED) = min(max(int(filter->factor * red + filter->bias), 0), 255);
 }
 
