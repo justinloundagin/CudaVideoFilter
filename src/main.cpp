@@ -8,8 +8,8 @@
 #define WINDOW_TITLE "Cuda Video Filter"
 #define FPS_LIMIT 30
 
-double difftimeval(const timeval *start, const timeval *end) {
-   double ms = (end->tv_sec - start->tv_sec) * 1000.0 + 
+float difftimeval(const timeval *start, const timeval *end) {
+   float ms = (end->tv_sec - start->tv_sec) * 1000.0 + 
                (end->tv_usec - start->tv_usec) / 1000.0;
 
    return ms < 0.0 ? 0.0 : ms;
@@ -52,7 +52,7 @@ IplImage *stitchImages(IplImage *images[], int numImages) {
 char *computeFps(const char *fmt) {
    static char fps[256] = {0};
    static unsigned count = 0;
-   static double elapsed = 0.0;
+   static float elapsed = 0.0;
    static timeval start;
    static timeval end;
 
@@ -101,16 +101,15 @@ int main(int argc, char **argv) {
    while(cvWaitKey(5) != 27 && (origin = cvQueryFrame(capture)) != NULL) {
       for(int i=0; i<argc - 1; i++)
          cudaFilter(frames[i] = cvCloneImage(origin), filters[i]);
-
-      /*
+/*
       IplImage *result = stitchImages(frames, argc - 1);
       cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
       cvShowImage(WINDOW_TITLE, result);
       */
-      IplImage *result = stitchImages(frames, argc - 1); 
-      cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
-      cvShowImage(WINDOW_TITLE, result);
-       cvReleaseImage(&result);
+     // IplImage *result = stitchImages(frames, argc - 1); 
+      cvPutText(frames[0], computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
+      cvShowImage(WINDOW_TITLE, frames[0]);
+      //cvReleaseImage(&result);
    }
 
    cvReleaseCapture(&capture);

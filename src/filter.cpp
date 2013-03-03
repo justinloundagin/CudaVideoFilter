@@ -19,16 +19,16 @@ static char *mapFile(const char *path, int *size, int flags) {
    return ret;
 }
 
-Filter *createFilter(int rows, int cols, double factor, double bias, double val) {
+Filter *createFilter(int rows, int cols, float factor, float bias, float val) {
    Filter *filter = (Filter*)malloc(sizeof(Filter));
-   filter->data = (double*)malloc(rows * cols * sizeof(double));
+   filter->data = (float*)malloc(rows * cols * sizeof(float));
    filter->rows = rows;
    filter->cols = cols;
    filter->factor = factor;
    filter->bias = bias;
    for(int i=0; i<rows; i++) {
       for(int j=0; j<cols; j++) {
-         filterElement(filter, i, j) = val;
+         filterElement(*filter, i, j) = val;
       }
    }
    return filter;
@@ -42,9 +42,9 @@ Filter **createFiltersFromFiles(char **paths, int size) {
 }
 
 
-Filter *createFilterFromFile(char *path, double factor, double bias) {
+Filter *createFilterFromFile(char *path, float factor, float bias) {
    char *tmp = NULL;
-   double *data;
+   float *data;
    int bytes, rows = 0, cols = 0;
    char *buff = mapFile(path, &bytes, O_RDONLY);
 
