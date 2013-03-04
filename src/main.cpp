@@ -1,12 +1,15 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv.h>
 #include <cstdlib>
+#include <cmath>
+
 #include <sys/time.h>
 #include "cudafilter.hpp"
 #include "imageutils.hpp"
 
 #define WINDOW_TITLE "Cuda Video Filter"
-#define FPS_LIMIT 30
+#define FPS_LIMIT 15
+
 
 float difftimeval(const timeval *start, const timeval *end) {
    float ms = (end->tv_sec - start->tv_sec) * 1000.0 + 
@@ -48,7 +51,7 @@ void beginProcessLoop(CvCapture *capture, IplImage **frames, Filter **filters, i
      // cvShowImage(WINDOW_TITLE, result);
       
      // IplImage *result = stitchImages(frames, argc - 1); 
-     // cvPutText(frames[0], computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
+      cvPutText(frames[0], computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
       cvShowImage(WINDOW_TITLE, frames[0]);
       //cvReleaseImage(&result);
    }

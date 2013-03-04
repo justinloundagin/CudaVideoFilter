@@ -8,13 +8,12 @@
 
 #define THREAD_DIM 16
 #define CUDA_ERR_HANDLER(err) cudaErrorHandler(err, __FILE__, __LINE__)
+#define IMAGE_ELEM(image, elemtype, row, col) \
+    (((elemtype*)(image.data + image.widthStep*(row)))[(col)])
 
 #define BLUE 0
 #define GREEN 1
 #define RED 2
-
-#define IMAGE_ELEM(image, elemtype, row, col)       \
-    (((elemtype*)(image.data + image.widthStep*(row)))[(col)])
 
 struct Image {
    char *data;
@@ -24,7 +23,7 @@ struct Image {
    int nChannels;
 };
 
-void cudaErrorHandler(cudaError_t err, const char *file, int line) {
+static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
    if(err != cudaSuccess) {
       fprintf(stderr, "%s on line %d: %s\n", file, line, cudaGetErrorString(err));
       exit(EXIT_FAILURE);
