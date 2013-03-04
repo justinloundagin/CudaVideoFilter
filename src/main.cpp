@@ -1,9 +1,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv.h>
 #include <cstdlib>
-#include <stdarg.h>
 #include <sys/time.h>
 #include "cudafilter.hpp"
+#include "imageutils.hpp"
 
 #define WINDOW_TITLE "Cuda Video Filter"
 #define FPS_LIMIT 30
@@ -13,40 +13,6 @@ float difftimeval(const timeval *start, const timeval *end) {
                (end->tv_usec - start->tv_usec) / 1000.0;
 
    return ms < 0.0 ? 0.0 : ms;
-}
-
-
-IplImage *stitchImages(IplImage *images[], int numImages) {
-    int w = ceil(numImages / 2.0);
-    int h = 2.0;
-    int size = 300;
-
-    // Create a new 3 channel image
-    IplImage *stitched = cvCreateImage( cvSize(100 + size*w, 60 + size*h), 8, 3 );
-
-    // Loop for nArgs number of arguments
-    for (int i = 0, m = 20, n = 20; i < numImages; i++, m += (20 + size)) {
-        IplImage *img = images[i];
-        if(img == 0) {
-            cvReleaseImage(&stitched);
-            break;
-        }
-        // Find whether height or width is greater in order to resize the image
-        int max = (img->width > img->height)? img->width: img->height;
-
-        // Find the scaling factor to resize the image
-        float scale = (float) ( (float) max / size );
-
-        // Used to Align the images
-        if( i % w == 0 && m!= 20) {
-            m = 20;
-            n += 20 + size;
-        }
-        cvSetImageROI(stitched, cvRect(m, n, (int)( img->width/scale ), (int)( img->height/scale )));
-        cvResize(img, stitched);
-        cvResetImageROI(stitched);
-    }
-    return stitched;
 }
 
 char *computeFps(const char *fmt) {
@@ -67,18 +33,27 @@ char *computeFps(const char *fmt) {
    return fps;
 }
 
-IplImage **createImages(int size, int width, int height, int depth, int channels) {
-   IplImage **frames = (IplImage**)calloc(size, sizeof(IplImage*));
-   
-   for(int i=0; i<size; i++)
-      frames[i] = cvCreateImage(cvSize(width, height), depth, channels);
-   return frames;
+void beginProcessLoop(CvCapture *capture, IplImage **frames, Filter **filters, int size) {
+   IplImage *origin;
+   CvFont font;
+
+   cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX | CV_FONT_ITALIC, 0.5, .5, 0, 1);
+
+   while(cvWaitKey(5) != 27 && (origin = cvQueryFrame(capture)) != NULL) {
+      for(int i=0; i<size; i++)
+         cudaFilter(frames[i] = cvCloneImage(origin), filters[i]);
+
+     // IplImage *result = stitchImages(frames, size);
+   //   cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
+     // cvShowImage(WINDOW_TITLE, result);
+      
+     // IplImage *result = stitchImages(frames, argc - 1); 
+     // cvPutText(frames[0], computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
+      cvShowImage(WINDOW_TITLE, frames[0]);
+      //cvReleaseImage(&result);
+   }
 }
 
-void releaseImages(IplImage **images, int size) {
-   while(size--) 
-      cvReleaseImage(images++);
-}
 
 int main(int argc, char **argv) {
    if(argc < 2) {
@@ -88,33 +63,26 @@ int main(int argc, char **argv) {
 
    cvNamedWindow(WINDOW_TITLE, CV_WINDOW_AUTOSIZE);
    CvCapture* capture = cvCaptureFromCAM(0);
-   CvFont font;
+   Filter **filters = (Filter**)calloc(argc - 1, sizeof(Filter*)); //createFiltersFromFiles(argv + 1, argc - 1);
+   IplImage **frames = (IplImage **) calloc(argc - 1, sizeof(IplImage*));
 
-   int width = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
-   int height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
+   for(int i=0; i < argc - 1; i++)
+      filters[i] = createFilterFromFile(argv[i+1], 1.0, 0.0);
 
-   Filter **filters = createFiltersFromFiles(argv + 1, argc - 1);
-   IplImage *origin, **frames = createImages(argc - 1, width, height, 8 , 3); 
+   //start video processing
+   beginProcessLoop(capture, frames, filters, argc - 1);
 
-   cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX | CV_FONT_ITALIC, 0.5, .5, 0, 1);
-
-   while(cvWaitKey(5) != 27 && (origin = cvQueryFrame(capture)) != NULL) {
-      for(int i=0; i<argc - 1; i++)
-         cudaFilter(frames[i] = cvCloneImage(origin), filters[i]);
-/*
-      IplImage *result = stitchImages(frames, argc - 1);
-      cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
-      cvShowImage(WINDOW_TITLE, result);
-      */
-     // IplImage *result = stitchImages(frames, argc - 1); 
-      cvPutText(frames[0], computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
-      cvShowImage(WINDOW_TITLE, frames[0]);
-      //cvReleaseImage(&result);
-   }
-
+   //clean up
    cvReleaseCapture(&capture);
    cvDestroyWindow(WINDOW_TITLE);
-   releaseImages(frames, argc - 1);
-   freeFilters(filters, argc - 1);
+
+   for(int i=0; i<argc - 1; i++) {
+      free(filters[i]);
+      cvReleaseImage(&frames[i]);
+   }
+
+   free(filters);
+   free(frames);
+
    return 0;
 }

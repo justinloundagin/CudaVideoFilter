@@ -23,8 +23,4 @@ inline HOST DEVICE float &filterElement(Filter filter, int row, int col) {
 
 Filter *createFilter(int rows, int cols, float factor, float bias, float val = 0.0);
 Filter *createFilterFromFile(char *path, float factor, float bias);
-Filter **createFiltersFromFiles(char **paths, int size);
-void freeFilter(Filter *filter);
-void freeFilters(Filter **filters, int size);
-
 #endif

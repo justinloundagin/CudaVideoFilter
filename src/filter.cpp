@@ -34,14 +34,6 @@ Filter *createFilter(int rows, int cols, float factor, float bias, float val) {
    return filter;
 }
 
-Filter **createFiltersFromFiles(char **paths, int size) {
-   Filter **filters = (Filter**)calloc(size, sizeof(Filter*));
-   for(int i=0; i<size; i++)
-      filters[i] = createFilterFromFile(paths[i], 1.0, 0.0);
-   return filters;
-}
-
-
 Filter *createFilterFromFile(char *path, float factor, float bias) {
    char *tmp = NULL;
    float *data;
@@ -71,13 +63,3 @@ Filter *createFilterFromFile(char *path, float factor, float bias) {
    return filter;
 }
 
-void freeFilter(Filter *filter) {
-   assert(filter && filter->data);
-   free(filter->data);
-   free(filter);
-}
-
-void freeFilters(Filter **filters, int size) {
-   while(size--)
-      freeFilter(*filters++);
-}
