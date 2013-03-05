@@ -2,10 +2,7 @@
 #include <cv.h>
 #include <iostream>
 #include <cstdlib>
-#include <cmath>
-#include <sys/time.h>
 #include "cudafilter.hpp"
-#include "imageutils.hpp"
 
 #define WINDOW_TITLE "Cuda Video Filter"
 #define FPS_LIMIT 15
@@ -13,29 +10,17 @@
 using namespace cv;
 using namespace std;
 
-
-float difftimeval(const timeval *start, const timeval *end) {
-   float ms = (end->tv_sec - start->tv_sec) * 1000.0 + 
-               (end->tv_usec - start->tv_usec) / 1000.0;
-
-   return ms < 0.0 ? 0.0 : ms;
-}
-
-char *computeFps(const char *fmt) {
+char *computeFps(float ms) {
    static char fps[256] = {0};
    static unsigned count = 0;
    static float elapsed = 0.0;
-   static timeval start;
-   static timeval end;
 
-   gettimeofday(&end, NULL);
-   elapsed += difftimeval(&start, &end);
+   elapsed += ms;
 
    if(++count % FPS_LIMIT == 0) {
-      sprintf(fps, fmt, (int)(count / (elapsed / 1000.0)));
+      sprintf(fps, "FPS (%.2f)", 1000.0 * FPS_LIMIT / (float) elapsed);
       count = elapsed = 0;
    }
-   gettimeofday(&start, NULL);
    return fps;
 }
 
@@ -46,7 +31,6 @@ int main(int argc, char **argv) {
       exit(1);
    }
 
-
    VideoCapture capture(0);
    Mat frame;
    Filter filter(argv[1], 1.0, 0.0);
@@ -55,7 +39,9 @@ int main(int argc, char **argv) {
 
    while(waitKey(10) != 27) { 
       capture >> frame;
-      CudaFilter(frame, filter)();
+      int ms = CudaFilter(frame, filter)();
+      putText(frame, computeFps(ms), cvPoint(30,30), 
+              FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(20,20,250), 1, CV_AA);
       imshow(WINDOW_TITLE, frame);
    }
 

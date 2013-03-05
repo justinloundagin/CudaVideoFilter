@@ -1,5 +1,5 @@
 CC = nvcc
-SRC = src/imageutils.cpp src/filter.cpp src/cudafilter.cu src/main.cpp
+SRC = src/cudafilter.cu src/main.cpp
 TARGET_OS = $(shell uname)
 
 ifeq ($(TARGET_OS), Darwin)

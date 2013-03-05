@@ -8,28 +8,17 @@
 #include <iostream>
 
 #define THREAD_DIM 16
-#define IMAGE_ELEM(image, elemtype, row, col) \
-    (((elemtype*)(image.data + image.widthStep*(row)))[(col)])
     
 #define CUDA_ERR_HANDLER(err) cudaErrorHandler(err, __FILE__, __LINE__)
-
 static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
    if(err != cudaSuccess) {
-      fprintf(stderr, "%s on line %d: %s\n", file, line, cudaGetErrorString(err));
+      std::cerr<<cudaGetErrorString(err)<<" on line "<<line<<" : "<<file<<std::endl;
       exit(EXIT_FAILURE);
    }
 }
-#define BLUE 0
-#define GREEN 1
-#define RED 2
-
-
-__device__ uchar &imageElement(Image image, int row, int col, int ndx) {
-   return IMAGE_ELEM(image, uchar, row, col * image.nChannels + ndx);
-}
 
 __device__ void convolutionFilter(Image image, Image result, Filter filter, int x, int y) {
-   float red = 0.0, green = 0.0, blue = 0.0; 
+   float3 bgr;
 
    //multiply every value of the filter with corresponding image pixel 
    for(int filterX = 0; filterX < filter.cols; filterX++) {
@@ -41,16 +30,16 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
             continue;
          
          float filterVal = filter[filterX][filterY];
-         blue  += imageElement(image, imageX, imageY, BLUE) * filterVal;
-         green += imageElement(image, imageX, imageY, GREEN) * filterVal;
-         red   += imageElement(image, imageX, imageY, RED) * filterVal;
+         bgr.x += image.at(imageX, imageY, BLUE) * filterVal;
+         bgr.y += image.at(imageX, imageY, GREEN) * filterVal;
+         bgr.z += image.at(imageX, imageY, RED) * filterVal;
       } 
    }
 
    //truncate values smaller than zero and larger than 255 
-   imageElement(result, x, y, BLUE) = min(max(int(1 * blue + 0), 0), 255); 
-   imageElement(result, x, y, GREEN) = min(max(int(1 * green + 0), 0), 255); 
-   imageElement(result, x, y, RED) = min(max(int(1 * red + 0), 0), 255); 
+   result.at(x, y, BLUE) = min(max(int(1 * bgr.x + 0), 0), 255); 
+   result.at(x, y, GREEN) = min(max(int(1 * bgr.y + 0), 0), 255); 
+   result.at(x, y, RED) = min(max(int(1 * bgr.z + 0), 0), 255); 
 }
 
 __global__ void filterKernal(Image image, Image result, Filter filter) {
@@ -58,21 +47,12 @@ __global__ void filterKernal(Image image, Image result, Filter filter) {
    int col = blockIdx.x * blockDim.x + threadIdx.x;
 
    if(row < image.height && col < image.width) {
-         convolutionFilter(image, result, filter, row, col);
+      convolutionFilter(image, result, filter, row, col);
    }
 }
 
-CudaFilter::CudaFilter(cv::Mat img, Filter filter) :
-   filter(filter) {
-      IplImage tmp = img;
-      image.width = tmp.width;
-      image.height = tmp.height;
-      image.nChannels = tmp.nChannels;
-      image.widthStep = tmp.widthStep;
-      image.size = tmp.imageSize;
-      image.data = tmp.imageData;
-}
-
+CudaFilter::CudaFilter(cv::Mat img, Filter filter)
+   :image(img), filter(filter) {}
 
 Image CudaFilter::imageToDevice(Image img) {
    Image dev;
@@ -91,7 +71,7 @@ Filter CudaFilter::filterToDevice(Filter filter) {
 
 }
 
-void CudaFilter::operator() () {
+void CudaFilter::applyFilter() {
    Image devImage, devResult;
    Filter devFilter;
 
@@ -112,4 +92,19 @@ void CudaFilter::operator() () {
    CUDA_ERR_HANDLER(cudaFree(devImage.data));
    CUDA_ERR_HANDLER(cudaFree(devResult.data));
    CUDA_ERR_HANDLER(cudaFree(devFilter.data));
-   }
+}
+
+float CudaFilter::operator() () {
+   float ms;
+   cudaEvent_t start, stop;
+   cudaEventCreate(&start);
+   cudaEventCreate(&stop);
+   cudaEventRecord(start, 0);
+
+   applyFilter();
+
+   cudaEventRecord(stop, 0);
+   cudaEventSynchronize(stop);
+   cudaEventElapsedTime(&ms, start, stop);
+   return ms;
+}

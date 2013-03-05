@@ -3,26 +3,21 @@
 
 #include <cv.h>
 #include "filter.hpp"
+#include "image.hpp"
 
-struct Image {
-   char *data;
-   int width; 
-   int height;
-   int widthStep;
-   int nChannels;
-   int size;
-};
 
 class CudaFilter {
 	Image image;
 	Filter filter;
 
-   Filter filterToDevice(Filter filter);
-   Image imageToDevice(Image image);
+   void applyFilter();
 
 public:
 	CudaFilter(cv::Mat image, Filter filter);
-	void operator() ();
+	float operator() ();
+
+   static Filter filterToDevice(Filter filter);
+   static Image imageToDevice(Image image);
 };
 
 #endif
