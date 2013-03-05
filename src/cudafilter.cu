@@ -5,23 +5,13 @@
 #include <cmath>
 #include <stdio.h>
 #include <assert.h>
+#include <iostream>
 
 #define THREAD_DIM 16
-#define CUDA_ERR_HANDLER(err) cudaErrorHandler(err, __FILE__, __LINE__)
 #define IMAGE_ELEM(image, elemtype, row, col) \
     (((elemtype*)(image.data + image.widthStep*(row)))[(col)])
-
-#define BLUE 0
-#define GREEN 1
-#define RED 2
-
-struct Image {
-   char *data;
-   int width; 
-   int height;
-   int widthStep;
-   int nChannels;
-};
+    
+#define CUDA_ERR_HANDLER(err) cudaErrorHandler(err, __FILE__, __LINE__)
 
 static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
    if(err != cudaSuccess) {
@@ -29,6 +19,10 @@ static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
       exit(EXIT_FAILURE);
    }
 }
+#define BLUE 0
+#define GREEN 1
+#define RED 2
+
 
 __device__ uchar &imageElement(Image image, int row, int col, int ndx) {
    return IMAGE_ELEM(image, uchar, row, col * image.nChannels + ndx);
@@ -68,45 +62,54 @@ __global__ void filterKernal(Image image, Image result, Filter filter) {
    }
 }
 
-Image cvImageToDevice(IplImage *image) {
+CudaFilter::CudaFilter(cv::Mat img, Filter filter) :
+   filter(filter) {
+      IplImage tmp = img;
+      image.width = tmp.width;
+      image.height = tmp.height;
+      image.nChannels = tmp.nChannels;
+      image.widthStep = tmp.widthStep;
+      image.size = tmp.imageSize;
+      image.data = tmp.imageData;
+}
+
+
+Image CudaFilter::imageToDevice(Image img) {
    Image dev;
-   dev.width = image->width;
-   dev.height = image->height;
-   dev.nChannels = image->nChannels;
-   dev.widthStep = image->widthStep;
-   CUDA_ERR_HANDLER(cudaMalloc(&dev.data, image->imageSize));
-   CUDA_ERR_HANDLER(cudaMemcpy(dev.data, image->imageData, image->imageSize, cudaMemcpyHostToDevice));
+   memcpy(&dev, &img, sizeof(Image));
+   CUDA_ERR_HANDLER(cudaMalloc(&dev.data, img.size));
+   CUDA_ERR_HANDLER(cudaMemcpy(dev.data, img.data, img.size, cudaMemcpyHostToDevice));
    return dev;
+
 }
 
-Filter filterToDevice(Filter *filter) {
-   Filter dev;
-   dev.rows = filter->rows;
-   dev.cols = filter->cols;
-   CUDA_ERR_HANDLER(cudaMalloc(&dev.data, filter->rows * filter->cols * sizeof(float)));
-   CUDA_ERR_HANDLER(cudaMemcpy(dev.data, filter->data, filter->rows * filter->cols * sizeof(float), cudaMemcpyHostToDevice));
+Filter CudaFilter::filterToDevice(Filter filter) {
+   Filter dev(filter);
+   CUDA_ERR_HANDLER(cudaMalloc(&dev.data, filter.rows * filter.cols * sizeof(float)));
+   CUDA_ERR_HANDLER(cudaMemcpy(dev.data, filter.data, filter.rows * filter.cols * sizeof(float), cudaMemcpyHostToDevice));
    return dev;
+
 }
 
-void cudaFilter(IplImage *image, Filter *filter) {
+void CudaFilter::operator() () {
    Image devImage, devResult;
    Filter devFilter;
 
-   int blkDimX = ceil((float)image->width / (float) THREAD_DIM);
-   int blkDimY = ceil((float)image->height / (float) THREAD_DIM);
+   int blkDimX = ceil((float)image.width/ (float) THREAD_DIM);
+   int blkDimY = ceil((float)image.height / (float) THREAD_DIM);
 
    dim3 blkDim(blkDimX, blkDimY);
    dim3 thrDim(THREAD_DIM, THREAD_DIM);
 
-   devImage = cvImageToDevice(image);
-   devResult = cvImageToDevice(image);
+   devImage = imageToDevice(image);
+   devResult = imageToDevice(image);
    devFilter = filterToDevice(filter);
 
    filterKernal<<<blkDim, thrDim>>>(devImage, devResult, devFilter);
    CUDA_ERR_HANDLER(cudaGetLastError());
 
-   CUDA_ERR_HANDLER(cudaMemcpy(image->imageData, devResult.data, image->imageSize, cudaMemcpyDeviceToHost));
+   CUDA_ERR_HANDLER(cudaMemcpy(image.data, devResult.data, image.size, cudaMemcpyDeviceToHost));
    CUDA_ERR_HANDLER(cudaFree(devImage.data));
    CUDA_ERR_HANDLER(cudaFree(devResult.data));
    CUDA_ERR_HANDLER(cudaFree(devFilter.data));
-}
+   }

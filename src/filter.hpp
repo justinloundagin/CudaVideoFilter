@@ -18,13 +18,17 @@ public:
    int cols;
 
    HOST DEVICE Filter(char *path, float factor, float bias);
-   HOST DEVICE Filter() {}
-   HOST DEVICE float &at(int row, int col) {
-   	return data[cols * row + col];
+   HOST DEVICE Filter(const Filter &filter) {
+      rows = filter.rows;
+      cols = filter.cols;
+      data = filter.data;
+      bias = filter.bias;
+      factor = filter.factor;
    }
-
+   HOST DEVICE Filter() {}
    HOST DEVICE float *operator[](int row) {
    	return data +row * cols;
    }
+
 };
 #endif

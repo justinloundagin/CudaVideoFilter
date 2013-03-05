@@ -39,27 +39,6 @@ char *computeFps(const char *fmt) {
    return fps;
 }
 
-void beginProcessLoop(CvCapture *capture, IplImage **frames, Filter **filters, int size) {
-   IplImage *origin;
-   CvFont font;
-
-   cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX | CV_FONT_ITALIC, 0.5, .5, 0, 1);
-
-   while(cvWaitKey(5) != 27 && (origin = cvQueryFrame(capture)) != NULL) {
-      for(int i=0; i<size; i++)
-         cudaFilter(frames[i] = cvCloneImage(origin), filters[i]);
-
-     // IplImage *result = stitchImages(frames, size);
-   //   cvPutText(result, computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
-     // cvShowImage(WINDOW_TITLE, result);
-      
-     // IplImage *result = stitchImages(frames, argc - 1); 
-      cvPutText(frames[0], computeFps("FPS: %d"), cvPoint(5, 15), &font, cvScalar(255, 255, 0));
-      cvShowImage(WINDOW_TITLE, frames[0]);
-      //cvReleaseImage(&result);
-   }
-}
-
 
 int main(int argc, char **argv) {
    if(argc < 2) {
@@ -76,8 +55,7 @@ int main(int argc, char **argv) {
 
    while(waitKey(10) != 27) { 
       capture >> frame;
-      IplImage image = frame;
-      cudaFilter(&image, &filter);
+      CudaFilter(frame, filter)();
       imshow(WINDOW_TITLE, frame);
    }
 

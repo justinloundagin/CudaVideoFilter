@@ -49,3 +49,5 @@ HOST DEVICE Filter::Filter(char *path, float factor, float bias)
    munmap(buff, bytes);
 }
 
+
+
