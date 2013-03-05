@@ -1,14 +1,17 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cv.h>
+#include <iostream>
 #include <cstdlib>
 #include <cmath>
-
 #include <sys/time.h>
 #include "cudafilter.hpp"
 #include "imageutils.hpp"
 
 #define WINDOW_TITLE "Cuda Video Filter"
 #define FPS_LIMIT 15
+
+using namespace cv;
+using namespace std;
 
 
 float difftimeval(const timeval *start, const timeval *end) {
@@ -60,32 +63,23 @@ void beginProcessLoop(CvCapture *capture, IplImage **frames, Filter **filters, i
 
 int main(int argc, char **argv) {
    if(argc < 2) {
-      fprintf(stderr, "usage: cudafitler <filter> ...\n");
+      cerr<<"usage: cudafitler <filter> ...\n";
       exit(1);
    }
 
-   cvNamedWindow(WINDOW_TITLE, CV_WINDOW_AUTOSIZE);
-   CvCapture* capture = cvCaptureFromCAM(0);
-   Filter **filters = (Filter**)calloc(argc - 1, sizeof(Filter*)); //createFiltersFromFiles(argv + 1, argc - 1);
-   IplImage **frames = (IplImage **) calloc(argc - 1, sizeof(IplImage*));
 
-   for(int i=0; i < argc - 1; i++)
-      filters[i] = createFilterFromFile(argv[i+1], 1.0, 0.0);
+   VideoCapture capture(0);
+   Mat frame;
+   Filter filter(argv[1], 1.0, 0.0);
 
-   //start video processing
-   beginProcessLoop(capture, frames, filters, argc - 1);
+   namedWindow(WINDOW_TITLE, CV_WINDOW_AUTOSIZE);
 
-   //clean up
-   cvReleaseCapture(&capture);
-   cvDestroyWindow(WINDOW_TITLE);
-
-   for(int i=0; i<argc - 1; i++) {
-      free(filters[i]);
-      cvReleaseImage(&frames[i]);
+   while(waitKey(10) != 27) { 
+      capture >> frame;
+      IplImage image = frame;
+      cudaFilter(&image, &filter);
+      imshow(WINDOW_TITLE, frame);
    }
-
-   free(filters);
-   free(frames);
 
    return 0;
 }

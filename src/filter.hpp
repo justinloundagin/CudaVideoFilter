@@ -9,18 +9,22 @@
 #define DEVICE
 #endif
 
-struct Filter {
+class Filter {
+public:
    float factor;
    float bias;
    float *data;
    int rows; 
    int cols;
+
+   HOST DEVICE Filter(char *path, float factor, float bias);
+   HOST DEVICE Filter() {}
+   HOST DEVICE float &at(int row, int col) {
+   	return data[cols * row + col];
+   }
+
+   HOST DEVICE float *operator[](int row) {
+   	return data +row * cols;
+   }
 };
-
-inline HOST DEVICE float &filterElement(Filter filter, int row, int col) {
-   return filter.data[filter.cols * row + col];
-}
-
-Filter *createFilter(int rows, int cols, float factor, float bias, float val = 0.0);
-Filter *createFilterFromFile(char *path, float factor, float bias);
 #endif

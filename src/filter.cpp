@@ -19,25 +19,10 @@ static char *mapFile(const char *path, int *size, int flags) {
    return ret;
 }
 
-Filter *createFilter(int rows, int cols, float factor, float bias, float val) {
-   Filter *filter = (Filter*)malloc(sizeof(Filter));
-   filter->data = (float*)malloc(rows * cols * sizeof(float));
-   filter->rows = rows;
-   filter->cols = cols;
-   filter->factor = factor;
-   filter->bias = bias;
-   for(int i=0; i<rows; i++) {
-      for(int j=0; j<cols; j++) {
-         filterElement(*filter, i, j) = val;
-      }
-   }
-   return filter;
-}
-
-Filter *createFilterFromFile(char *path, float factor, float bias) {
+HOST DEVICE Filter::Filter(char *path, float factor, float bias) 
+   :rows(0), cols(0), factor(factor), bias(bias) {
    char *tmp = NULL;
-   float *data;
-   int bytes, rows = 0, cols = 0;
+   int bytes;
    char *buff = mapFile(path, &bytes, O_RDONLY);
 
    for(int ndx = 0; ndx < bytes; ndx++ ) {
@@ -47,11 +32,12 @@ Filter *createFilterFromFile(char *path, float factor, float bias) {
          rows++;
    }
 
-   Filter *filter = createFilter(rows, cols, factor, bias, 0.0);
-   data = filter->data;
-   for(rows = 0; bytes && rows < filter->rows; rows++) {
-      for(cols = 0; bytes && cols < filter->cols; cols++) {
-         *data++ = strtod(tmp = buff, &buff);
+   data = new float[rows * cols]; //createFilter(rows, cols, factor, bias, 0.0);
+   float *temp = data;
+   for(int i = 0; bytes && i < rows; i++) {
+      for(int j = 0; bytes && j < cols; j++) {
+         char *tmp = buff;
+         *temp++ = strtod(buff, &buff);
          bytes -= buff - tmp;
          while(bytes && isspace(*buff)) {
             buff++;
@@ -59,7 +45,7 @@ Filter *createFilterFromFile(char *path, float factor, float bias) {
          }
       }
    }
+
    munmap(buff, bytes);
-   return filter;
 }
 

@@ -46,7 +46,7 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
             imageY < 0 || imageY >= image.width)
             continue;
          
-         float filterVal = filterElement(filter, filterX, filterY);
+         float filterVal = filter[filterX][filterY];
          blue  += imageElement(image, imageX, imageY, BLUE) * filterVal;
          green += imageElement(image, imageX, imageY, GREEN) * filterVal;
          red   += imageElement(image, imageX, imageY, RED) * filterVal;
