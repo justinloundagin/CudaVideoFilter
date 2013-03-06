@@ -21,6 +21,7 @@ public:
    int nChannels;
    int size;
 
+   HOST DEVICE Image() {}
    HOST DEVICE Image(cv::Mat image) {
       IplImage tmp = image;
       width = tmp.width;
@@ -31,7 +32,14 @@ public:
       data = tmp.imageData;
    }
 
-   HOST DEVICE Image() {}
+   HOST DEVICE Image(const Image &image) {
+      width = image.width;
+      height = image.height;
+      nChannels = image.nChannels;
+      widthStep = image.widthStep;
+      size = image.size;
+      data = image.data;
+   }
 
    HOST DEVICE uchar &at(int row, int col, BGR color) {
       return ((uchar*)(data + widthStep * (row)))[col * nChannels + color];

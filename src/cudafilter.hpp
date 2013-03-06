@@ -2,22 +2,24 @@
 #define CUDAFILTER_H
 
 #include <cv.h>
+#include <vector>
 #include "filter.hpp"
 #include "image.hpp"
-
 
 class CudaFilter {
 	Image image;
 	Filter filter;
+   std::vector<void*>devmem;
 
    void applyFilter();
 
 public:
-	CudaFilter(cv::Mat image, Filter filter);
-	float operator() ();
+	CudaFilter(Image image, Filter filter);
+   ~CudaFilter();
 
-   static Filter filterToDevice(Filter filter);
-   static Image imageToDevice(Image image);
+	float operator()();
+   void toDevice(void **dev, void *host, int bytes);
+   void toHost(void *host, void *dev, int bytes);
 };
 
 #endif

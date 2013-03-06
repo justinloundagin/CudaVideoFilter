@@ -22,6 +22,7 @@ public:
    int rows; 
    int cols;
 
+   HOST DEVICE Filter() {}
    HOST DEVICE Filter(const Filter &filter) {
       rows = filter.rows;
       cols = filter.cols;
@@ -30,7 +31,7 @@ public:
       factor = filter.factor;
    }
 
-   HOST Filter(char *path, float factor, float bias) 
+   HOST DEVICE Filter(char *path, float factor, float bias) 
    :rows(0), cols(0), factor(factor), bias(bias) {
       int fd;
       struct stat fileStat;
@@ -64,8 +65,8 @@ public:
       }
    }
 
-   HOST DEVICE Filter() {}
    HOST DEVICE float &at(int row, int col) { return (*this)[row][col];}
-   HOST DEVICE float *operator[](int row) { return data +row * cols; }
+   HOST DEVICE float *operator[](int row) { return data + row * cols; }
 };
+
 #endif
