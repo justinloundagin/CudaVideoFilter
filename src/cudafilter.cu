@@ -18,6 +18,8 @@ static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
 }
 
 __device__ void convolutionFilter(Image image, Image result, Filter filter, int x, int y) {
+   
+   /*
    float3 bgr;
 
    //multiply every value of the filter with corresponding image pixel 
@@ -35,49 +37,62 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
          bgr.z += image.at(imageX, imageY, RED) * filterVal;
       } 
    }
+   */
    
-   /*
-   float3 bgr;
+   
+   
+   float3 bgr = make_float3(0, 0, 0);
 
    __shared__ unsigned sharedImage[THREADS_PER_DIM][THREADS_PER_DIM * 3];
    int tx = threadIdx.x;
    int ty = threadIdx.y;
 
-   sharedImage[tx][3*ty] = image.at(x, y, BLUE);
-   sharedImage[tx][3*ty+1] = image.at(x, y, GREEN);
-   sharedImage[tx][3*ty+2] = image.at(x, y, RED);
+   sharedImage[ty][3*tx] = image.at(y, x, BLUE);
+   sharedImage[ty][3*tx+1] = image.at(y, x, GREEN);
+   sharedImage[ty][3*tx+2] = image.at(y, x, RED);
 
    __syncthreads();
 
-   //multiply every value of the filter with corresponding image pixel 
+  // multiply every value of the filter with corresponding image pixel 
    for(int filterX = 0; filterX < filter.cols; filterX++) {
       for(int filterY = 0; filterY < filter.rows; filterY++) {
-         int imageX = tx - filter.cols / 2 + filterX;
-         int imageY = ty - filter.rows / 2 + filterY;
-         imageX = min(max(0, imageX), THREADS_PER_DIM - 1);
-         imageY = min(max(0, imageY), THREADS_PER_DIM - 1);
-         
+         int shX = tx - filter.cols / 2 + filterX;
+         int shY = ty - filter.rows / 2 + filterY;
+         int glX = x - filter.cols / 2 + filterX;
+         int glY = y - filter.rows / 2 + filterY;
          float filterVal = filter[filterX][filterY];
-         bgr.x += sharedImage[imageX][3 * imageY] * filterVal;//image.at(imageX, imageY, BLUE) * filterVal;
-         bgr.y += sharedImage[imageX][3 * imageY + 1] * filterVal; //image.at(imageX, imageY, GREEN) * filterVal;
-         bgr.z += sharedImage[imageX][3 * imageY + 2] * filterVal; //image.at(imageX, imageY, RED) * filterVal;
+
+         if(glX < 0 || glX >= image.width ||
+            glY < 0 || glY >= image.height)
+            continue;
+
+         if(shX >= THREADS_PER_DIM - 1 || shY >= THREADS_PER_DIM -1 || shX < 0 || shY < 0) {
+            bgr.x += image.at(glY, glX, BLUE) * filterVal;
+            bgr.y += image.at(glY, glX, GREEN) * filterVal;
+            bgr.z += image.at(glY, glX, RED) * filterVal;
+         }
+         else {
+            bgr.x += sharedImage[shY][3 * shX] * filterVal;//image.at(imageX, imageY, BLUE) * filterVal;
+            bgr.y += sharedImage[shY][3 * shX + 1] * filterVal; //image.at(imageX, imageY, GREEN) * filterVal;
+            bgr.z += sharedImage[shY][3 * shX + 2] * filterVal; //image.at(imageX, imageY, RED) * filterVal;
+         }
       } 
    }
-   */
+   
 
 
    //truncate values smaller than zero and larger than 255 
-   result.at(x, y, BLUE) = min(max(int(filter.factor * bgr.x + filter.bias), 0), 255); 
-   result.at(x, y, GREEN) = min(max(int(filter.factor * bgr.y + filter.bias), 0), 255); 
-   result.at(x, y, RED) = min(max(int(filter.factor * bgr.z + filter.bias), 0), 255); 
+   result.at(y, x, BLUE) = min(max(int(filter.factor * bgr.x + filter.bias), 0), 255); 
+   result.at(y, x, GREEN) = min(max(int(filter.factor * bgr.y + filter.bias), 0), 255); 
+   result.at(y, x, RED) = min(max(int(filter.factor * bgr.z + filter.bias), 0), 255); 
 }
 
 __global__ void filterKernal(Image image, Image result, Filter filter) {
-   int row = blockIdx.y * blockDim.y + threadIdx.y;
-   int col = blockIdx.x * blockDim.x + threadIdx.x;
+   int y = blockIdx.y * blockDim.y + threadIdx.y;
+   int x = blockIdx.x * blockDim.x + threadIdx.x;
 
-   if(row < image.height && col < image.width) {
-      convolutionFilter(image, result, filter, row, col);
+   if(y < image.height && x < image.width) {
+      convolutionFilter(image, result, filter, x, y);
    }
 }
 
