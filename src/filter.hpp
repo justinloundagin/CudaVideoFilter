@@ -1,20 +1,24 @@
-#ifndef FILTER_H
-#define FILTER_H
+#ifndef FILTER_HPP
+#define FILTER_HPP
 
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <cctype>
 
 #ifdef __CUDACC__
 #define HOST __host__
 #define DEVICE __device__
+#define INLINE __forceinline__
 #else
 #define HOST
 #define DEVICE
+#define INLINE
 #endif
 
 class Filter {
+
 public:
    float factor;
    float bias;
@@ -49,11 +53,10 @@ public:
          }
 
          data = new float[rows * cols];
-         float *temp = data;
          for(int i = 0; bytes && i < rows; i++) {
             for(int j = 0; bytes && j < cols; j++) {
                char *ptr = buff;
-               *temp++ = strtod(buff, &buff);
+               (*this)[i][j] = strtod(buff, &buff);
                bytes -= buff - ptr;
                while(bytes && isspace(*buff)) {
                   buff++;
@@ -65,8 +68,12 @@ public:
       }
    }
 
-   HOST DEVICE float &at(int row, int col) { return (*this)[row][col];}
-   HOST DEVICE float *operator[](int row) { return data + row * cols; }
+   HOST DEVICE float &at(int row, int col) { 
+      return (*this)[row][col];
+   }
+   HOST DEVICE float *operator[](int row) { 
+      return data + row * cols; 
+   }
 };
 
 #endif

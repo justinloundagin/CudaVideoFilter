@@ -13,6 +13,7 @@
 enum BGR {BLUE, GREEN, RED};
 
 class Image {
+   
 public:
    char *data;
    int width; 

@@ -6,11 +6,12 @@
 #include "cudafilter.hpp"
 
 #define WINDOW_TITLE "Cuda Video Filter"
-#define FPS_LIMIT 15
+#define FPS_LIMIT 30
 
 using namespace cv;
 using namespace std;
 
+int kerdim;
 char *computeFps(float ms) {
    static char fps[256] = {0};
    static unsigned count = 0;
@@ -20,6 +21,7 @@ char *computeFps(float ms) {
 
    if(++count % FPS_LIMIT == 0) {
       sprintf(fps, "FPS (%.2f)", 1000.0 * FPS_LIMIT / (float) elapsed);
+      printf("%d\t%d\t%.2f\n", FPS_LIMIT, kerdim, elapsed);
       count = elapsed = 0;
    }
    return fps;
@@ -28,7 +30,6 @@ char *computeFps(float ms) {
 
 unsigned parseArgs(int argc, char **argv) {
    unsigned frameLimit = std::numeric_limits<unsigned>::max();
-
    if(argc < 2) {
       cerr<<"usage: cudafitler <filter> ...\n";
       exit(1);
@@ -45,6 +46,7 @@ int main(int argc, char **argv) {
    VideoCapture capture(0);
    Mat frame;
    Filter filter(argv[1], 1.0, 0.0);
+   kerdim = filter.rows;
 
    namedWindow(WINDOW_TITLE, CV_WINDOW_AUTOSIZE);
 
