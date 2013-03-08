@@ -56,30 +56,22 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
   // multiply every value of the filter with corresponding image pixel 
    for(int filterX = 0; filterX < filter.cols; filterX++) {
       for(int filterY = 0; filterY < filter.rows; filterY++) {
+
          int shX = tx - filter.cols / 2 + filterX;
          int shY = ty - filter.rows / 2 + filterY;
-         int glX = x - filter.cols / 2 + filterX;
-         int glY = y - filter.rows / 2 + filterY;
-         float filterVal = filter[filterX][filterY];
+         float filterVal = filter[filterY][filterX];
 
-         if(glX < 0 || glX >= image.width ||
-            glY < 0 || glY >= image.height)
-            continue;
+         shX >= THREADS_PER_DIM && (shX = THREADS_PER_DIM - 1);
+         shY >= THREADS_PER_DIM && (shY = THREADS_PER_DIM - 1);
+         shX < 0 && (shX = THREADS_PER_DIM - 1);
+         shY < 0 && (shY = THREADS_PER_DIM - 1);
 
-         if(shX >= THREADS_PER_DIM - 1 || shY >= THREADS_PER_DIM -1 || shX < 0 || shY < 0) {
-            bgr.x += image.at(glY, glX, BLUE) * filterVal;
-            bgr.y += image.at(glY, glX, GREEN) * filterVal;
-            bgr.z += image.at(glY, glX, RED) * filterVal;
-         }
-         else {
-            bgr.x += sharedImage[shY][3 * shX] * filterVal;//image.at(imageX, imageY, BLUE) * filterVal;
-            bgr.y += sharedImage[shY][3 * shX + 1] * filterVal; //image.at(imageX, imageY, GREEN) * filterVal;
-            bgr.z += sharedImage[shY][3 * shX + 2] * filterVal; //image.at(imageX, imageY, RED) * filterVal;
-         }
+         bgr.x += sharedImage[shY][3 * shX] * filterVal; 
+         bgr.y += sharedImage[shY][3 * shX + 1] * filterVal;
+         bgr.z += sharedImage[shY][3 * shX + 2] * filterVal; 
       } 
    }
    
-
 
    //truncate values smaller than zero and larger than 255 
    result.at(y, x, BLUE) = min(max(int(filter.factor * bgr.x + filter.bias), 0), 255); 
