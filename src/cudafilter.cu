@@ -20,6 +20,7 @@ static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
 __device__ void convolutionFilter(Image image, Image result, Filter filter, int x, int y) {
    
    
+   /*
    float3 bgr;
 
    //multiply every value of the filter with corresponding image pixel 
@@ -37,11 +38,12 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
          bgr.z += image.at(imageY, imageX, RED) * filterVal;
       } 
    }
+   */
    
    
    
-   /*
-   float3 bgr = make_float3(0, 0, 0);
+   
+   float3 bgr;
 
    __shared__ unsigned sharedImage[THREADS_PER_DIM][THREADS_PER_DIM * 3];
    int tx = threadIdx.x;
@@ -72,7 +74,7 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
       } 
    }
    
-*/
+
    //truncate values smaller than zero and larger than 255 
    result.at(y, x, BLUE) = min(max(int(filter.factor * bgr.x + filter.bias), 0), 255); 
    result.at(y, x, GREEN) = min(max(int(filter.factor * bgr.y + filter.bias), 0), 255); 
