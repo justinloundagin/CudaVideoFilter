@@ -21,7 +21,7 @@ static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
 
 __device__ void convolutionFilter(Image image, Image result, int x, int y) {
    
-   
+   /*
    
    float3 bgr;
 
@@ -41,8 +41,8 @@ __device__ void convolutionFilter(Image image, Image result, int x, int y) {
       } 
    }
 
+   */
    
-   /*
    
    
    float3 bgr;
@@ -61,14 +61,15 @@ __device__ void convolutionFilter(Image image, Image result, int x, int y) {
    for(int filterX = 0; filterX < FILTER_SIZE; filterX++) {
       for(int filterY = 0; filterY < FILTER_SIZE; filterY++) {
 
-         int shX = tx - FILTER_SIZE / 2 + filterX;
-         int shY = ty - FILTER_SIZE / 2 + filterY;
-         float filterVal = filter[filterY][filterX];
-
+         unsigned shX = tx - FILTER_SIZE / 2 + filterX;
+         unsigned shY = ty - FILTER_SIZE / 2 + filterY;
+         float filterVal = cfilter[filterY * FILTER_SIZE + filterX];
+         
          shX >= THREADS_PER_DIM && (shX = THREADS_PER_DIM - 1);
          shY >= THREADS_PER_DIM && (shY = THREADS_PER_DIM - 1);
-         shX < 0 && (shX = THREADS_PER_DIM - 1);
-         shY < 0 && (shY = THREADS_PER_DIM - 1);
+         shX < 0 && (shX = 0);
+         shY < 0 && (shY = 0);
+         
 
          bgr.x += sharedImage[shY][3 * shX] * filterVal; 
          bgr.y += sharedImage[shY][3 * shX + 1] * filterVal;
@@ -76,7 +77,6 @@ __device__ void convolutionFilter(Image image, Image result, int x, int y) {
       } 
    }
    
-*/
    //truncate values smaller than zero and larger than 255 
    result.at(y, x, BLUE) = min(max(int(1 * bgr.x + 0), 0), 255); 
    result.at(y, x, GREEN) = min(max(int(1 * bgr.y + 0), 0), 255); 

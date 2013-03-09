@@ -21,4 +21,6 @@ public:
    void toHost(void *host, void *dev, int bytes);
 };
 
+//extern HOST DEVICE void convolutionFilter(Image image, Image result, int x, int y);
+
 #endif
