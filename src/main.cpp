@@ -12,6 +12,7 @@ using namespace cv;
 using namespace std;
 
 int kerdim;
+int limit = 5;
 char *computeFps(float ms) {
    static char fps[256] = {0};
    static unsigned count = 0;
@@ -23,6 +24,8 @@ char *computeFps(float ms) {
       sprintf(fps, "FPS (%.2f)", 1000.0 * FPS_LIMIT / (float) elapsed);
       printf("%d\t%d\t%.2f\n", FPS_LIMIT, kerdim, elapsed);
       count = elapsed = 0;
+      if(--limit == 0)
+         exit(0);
    }
    return fps;
 }
@@ -42,7 +45,7 @@ unsigned parseArgs(int argc, char **argv) {
 
 
 int main(int argc, char **argv) {
-   unsigned frameLimit = parseArgs(argc, argv);
+   parseArgs(argc, argv);
    VideoCapture capture(0);
    Mat frame;
    Filter filter(argv[1], 1.0, 0.0);
@@ -50,7 +53,7 @@ int main(int argc, char **argv) {
 
    namedWindow(WINDOW_TITLE, CV_WINDOW_AUTOSIZE);
 
-   while(frameLimit-- && waitKey(10) != 27) { 
+   while(waitKey(10) != 27) { 
       capture >> frame;
       int ms = CudaFilter(Image(frame), filter)();
       putText(frame, computeFps(ms), cvPoint(30,30), 

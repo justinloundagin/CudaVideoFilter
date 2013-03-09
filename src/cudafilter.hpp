@@ -8,7 +8,7 @@
 
 class CudaFilter {
 	Image image, devImage, devResult;
-	Filter devFilter;
+	//Filter devFilter;
 
    void applyFilter();
 
