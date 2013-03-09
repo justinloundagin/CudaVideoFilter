@@ -19,7 +19,7 @@ static void cudaErrorHandler(cudaError_t err, const char *file, int line) {
 
 __device__ void convolutionFilter(Image image, Image result, Filter filter, int x, int y) {
    
-   /*
+   
    float3 bgr;
 
    //multiply every value of the filter with corresponding image pixel 
@@ -27,20 +27,20 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
       for(int filterY = 0; filterY < filter.rows; filterY++) {
          int imageX = x - filter.cols / 2 + filterX;
          int imageY = y - filter.rows / 2 + filterY;
-         if(imageX < 0 || imageX >= image.height ||
-            imageY < 0 || imageY >= image.width)
+         if(imageX < 0 || imageX >= image.width ||
+            imageY < 0 || imageY >= image.height)
             continue;
          
-         float filterVal = filter[filterX][filterY];
-         bgr.x += image.at(imageX, imageY, BLUE) * filterVal;
-         bgr.y += image.at(imageX, imageY, GREEN) * filterVal;
-         bgr.z += image.at(imageX, imageY, RED) * filterVal;
+         float filterVal = filter[filterY][filterX];
+         bgr.x += image.at(imageY, imageX, BLUE) * filterVal;
+         bgr.y += image.at(imageY, imageX, GREEN) * filterVal;
+         bgr.z += image.at(imageY, imageX, RED) * filterVal;
       } 
    }
-   */
    
    
    
+   /*
    float3 bgr = make_float3(0, 0, 0);
 
    __shared__ unsigned sharedImage[THREADS_PER_DIM][THREADS_PER_DIM * 3];
@@ -72,7 +72,7 @@ __device__ void convolutionFilter(Image image, Image result, Filter filter, int 
       } 
    }
    
-
+*/
    //truncate values smaller than zero and larger than 255 
    result.at(y, x, BLUE) = min(max(int(filter.factor * bgr.x + filter.bias), 0), 255); 
    result.at(y, x, GREEN) = min(max(int(filter.factor * bgr.y + filter.bias), 0), 255); 
@@ -89,17 +89,23 @@ __global__ void filterKernal(Image image, Image result, Filter filter) {
 }
 
 CudaFilter::CudaFilter(Image image, Filter filter)
-   :image(image), filter(filter) {}
+   :image(image), devImage(image), devResult(image), devFilter(filter) {
+      toDevice((void**)&devImage.data, image.data, image.size);
+      toDevice((void**)&devResult.data, image.data, image.size);
+      toDevice((void**)&devFilter.data, filter.data, filter.rows * filter.cols * sizeof(float));
+}
 
 CudaFilter::~CudaFilter() {
-   for(int i=0; i<devmem.size(); i++)
-      cudaFree(devmem.at(i));
+   assert(image.size == devResult.size);
+   toHost(image.data, devResult.data, image.size);
+   CUDA_ERR_HANDLER(cudaFree(devImage.data));
+   CUDA_ERR_HANDLER(cudaFree(devResult.data));
+   CUDA_ERR_HANDLER(cudaFree(devFilter.data));
 }
 
 void CudaFilter::toDevice(void **dev, void *host, int bytes) {
    CUDA_ERR_HANDLER(cudaMalloc(dev, bytes));
    CUDA_ERR_HANDLER(cudaMemcpy(*dev, host, bytes, cudaMemcpyHostToDevice));
-   devmem.push_back(*dev);
 }
 
 void CudaFilter::toHost(void *host, void *dev, int bytes) {
@@ -107,22 +113,13 @@ void CudaFilter::toHost(void *host, void *dev, int bytes) {
 }
 
 void CudaFilter::applyFilter() {
-   Image devImage(image), devResult(image);
-   Filter devFilter(filter);
-
-   toDevice((void**)&devImage.data, image.data, image.size);
-   toDevice((void**)&devResult.data, image.data, image.size);
-   toDevice((void**)&devFilter.data, filter.data, filter.rows * filter.cols * sizeof(float));
-
    dim3 threadsPerBlock(THREADS_PER_DIM, THREADS_PER_DIM);
    dim3 blocksPerGrid((image.width + THREADS_PER_DIM - 1) / THREADS_PER_DIM, 
                       (image.height + THREADS_PER_DIM - 1) / THREADS_PER_DIM);
 
    filterKernal<<<blocksPerGrid, threadsPerBlock>>>(devImage, devResult, devFilter);
+   cudaThreadSynchronize();
    CUDA_ERR_HANDLER(cudaGetLastError());
-
-   assert(image.size == devResult.size);
-   toHost(image.data, devResult.data, image.size);
 }
 
 float CudaFilter::operator() () {

@@ -7,9 +7,8 @@
 #include "image.hpp"
 
 class CudaFilter {
-	Image image;
-	Filter filter;
-   std::vector<void*>devmem;
+	Image image, devImage, devResult;
+	Filter devFilter;
 
    void applyFilter();
 
