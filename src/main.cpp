@@ -11,8 +11,7 @@
 using namespace cv;
 using namespace std;
 
-int kerdim;
-int limit = 5;
+
 char *computeFps(float ms) {
    static char fps[256] = {0};
    static unsigned count = 0;
@@ -22,40 +21,47 @@ char *computeFps(float ms) {
 
    if(++count % FPS_LIMIT == 0) {
       sprintf(fps, "FPS (%.2f)", 1000.0 * FPS_LIMIT / (float) elapsed);
-      printf("%d\t%d\t%.2f\n", FPS_LIMIT, kerdim, elapsed);
       count = elapsed = 0;
-      if(--limit == 0)
-         exit(0);
    }
    return fps;
 }
 
+ int getOptions(int argc, char **argv) {
+   int options = 0x00;
 
-unsigned parseArgs(int argc, char **argv) {
-   unsigned frameLimit = std::numeric_limits<unsigned>::max();
-   if(argc < 2) {
-      cerr<<"usage: cudafitler <filter> ...\n";
-      exit(1);
+   for(int i=4; i<argc; i++) {
+      if(!strcmp(argv[i], "-gray")) {
+         options |= CV_RGB2GRAY;
+      }
    }
-   else if(argc > 2)
-      frameLimit = atoi(argv[2]);
-
-   return frameLimit;
+   return options;
 }
 
+Mat applyOptions(Mat &image, int options) {
+   Mat cvtImg = image.clone();
+   cvtColor(image, cvtImg, options);
+   return cvtImg;
+}
 
 int main(int argc, char **argv) {
-   parseArgs(argc, argv);
+   if(argc < 4) {
+      cerr<<"usage: cudafitler <filter> <factor> <bias>\n";
+      exit(1);
+   }
+
    VideoCapture capture(0);
    Mat frame;
-   Filter filter(argv[1], 1.0, 0.0);
-   kerdim = filter.rows;
+   Filter filter(argv[1], atof(argv[2]), atof(argv[3]));
+   int options = getOptions(argc, argv);
 
    namedWindow(WINDOW_TITLE, CV_WINDOW_AUTOSIZE);
 
    while(waitKey(10) != 27) { 
       capture >> frame;
       int ms = CudaFilter(Image(frame), filter)();
+      if(options)
+         frame = applyOptions(frame, options);
+
       putText(frame, computeFps(ms), cvPoint(30,30), 
               FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(20,20,250), 1, CV_AA);
       imshow(WINDOW_TITLE, frame);
