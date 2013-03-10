@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <iostream>
 
-#define THREADS_PER_DIM 32
+#define THREADS_PER_DIM 16
 #define CUDA_ERR_HANDLER(err) cudaErrorHandler(err, __FILE__, __LINE__)
 
 
